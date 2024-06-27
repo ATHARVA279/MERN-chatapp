@@ -1,10 +1,11 @@
-import Message from "../models/Message.js";
-import Conversation from "../Models/Conversation.js";
+import Conversation from "../models/conversation.model.js";
+import Message from "../models/message.model.js";
+import { getReceiverSocketId, io } from "../socket/socket.js";
 
 export const sendMessage = async (req, res) => {
   try {
-    const { id: receiverId } = req.params;
     const { message } = req.body;
+    const { id: receiverId } = req.params;
     const senderId = req.user._id;
 
     let conversation = await Conversation.findOne({
@@ -24,27 +25,39 @@ export const sendMessage = async (req, res) => {
     });
 
     if (newMessage) {
-      conversation.message.push(newMessage._id);
+      conversation.messages.push(newMessage._id);
     }
 
-    Promise.all([newMessage.save(), conversation.save()]);
+    await Promise.all([conversation.save(), newMessage.save()]);
+
+    const receiverSocketId = getReceiverSocketId(receiverId);
+    if (receiverSocketId) {
+      io.to(receiverSocketId).emit("newMessage", newMessage);
+    }
 
     res.status(201).json(newMessage);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.log("Error in sendMessage controller: ", error.message);
+    res.status(500).json({ error: "Internal server error" });
   }
 };
 
 export const getMessages = async (req, res) => {
   try {
-    const { id: usertoChatId } = req.params;
+    const { id: userToChatId } = req.params;
     const senderId = req.user._id;
 
     const conversation = await Conversation.findOne({
-      participants: { $all: [senderId, usertoChatId] },
-    }).populate("message");
-    res.status(200).json(conversation.message);
+      participants: { $all: [senderId, userToChatId] },
+    }).populate("messages");
+
+    if (!conversation) return res.status(200).json([]);
+
+    const messages = conversation.messages;
+
+    res.status(200).json(messages);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.log("Error in getMessages controller: ", error.message);
+    res.status(500).json({ error: "Internal server error" });
   }
-}
+};

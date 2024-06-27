@@ -7,7 +7,7 @@ import toast from "react-hot-toast";
 const SearchInput = () => {
 	const [search, setSearch] = useState("");
 	const { setSelectedConversation } = useConversation();
-	const { conversations = [] } = useGetConversations(); // Provide default value
+	const { conversations } = useGetConversations();
 
 	const handleSubmit = (e) => {
 		e.preventDefault();
@@ -23,7 +23,6 @@ const SearchInput = () => {
 			setSearch("");
 		} else toast.error("No such user found!");
 	};
-
 	return (
 		<form onSubmit={handleSubmit} className='flex items-center gap-2'>
 			<input
@@ -39,5 +38,4 @@ const SearchInput = () => {
 		</form>
 	);
 };
-
 export default SearchInput;
